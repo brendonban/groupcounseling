@@ -1,89 +1,537 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<base target="_top">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Admin console – Group Counseling</title>
 <style>
-  :root { --bg:#F4F4F4; --surface:#FFFFFF; --line:#DDDDDD; --fg:#111111; --muted:#5E5E5E;
-          --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#111111; --surface:#1B1B1B; --line:#353535; --fg:#F2F2F2; --muted:#A8A8A8; color-scheme:dark; } }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
-  .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
-  .card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-  h1 { margin: 0; font-size: 1.3rem; }
-  p { margin: 0; color: var(--muted); font-size: .92rem; }
-  label { display: flex; flex-direction: column; gap: 6px; font-weight: 650; font-size: .88rem; }
-  input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
-  .row { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 400; font-size: .9rem; color: var(--muted); }
-  .row input { width: auto; }
-  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-  button { font: inherit; font-weight: 650; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--fg); background: var(--fg); color: var(--surface); cursor: pointer; }
-  button.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
-  .err { color: var(--fg); font-weight: 600; }
+/* Layout: a working console. Counts on top, filters, then registrations as rows; details slide in from the right. Black and white. */
+:root{
+  --bg:#F4F4F4; --surface:#FFFFFF; --soft:#EEEEEE; --line:#DDDDDD; --fg:#111111; --muted:#5E5E5E; --faint:#B5B5B5;
+  --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111111; --surface:#1B1B1B; --soft:#262626; --line:#353535; --fg:#F2F2F2; --muted:#A8A8A8; --faint:#5A5A5A; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+[hidden]{display:none!important}
+a{color:var(--fg)}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:18px}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.brand img{display:block;height:40px;width:auto}
+.brand .dk{display:none}
+@media (prefers-color-scheme: dark){.brand .lt{display:none}.brand .dk{display:block}}
+.brand h1{margin:0;font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:0;color:var(--muted);font-size:.85rem}
+@media (max-width:560px){.brand img{display:none!important}header.top{flex-direction:column;align-items:stretch}.top-actions .updated{flex:1 0 100%}.top-actions .btn{flex:1}}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.updated{color:var(--muted);font-size:.82rem}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;padding:8px 14px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:.88rem;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.btn.small{padding:5px 10px;font-size:.83rem;border-radius:7px}
+.btn.armed{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.btn:disabled{opacity:.45;cursor:default}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:transparent;padding:10px 4px;margin-right:18px;font-weight:650;font-size:1rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.tabs .badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--fg);color:var(--surface);font-size:.72rem;line-height:19px;text-align:center}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.stat:hover{border-color:var(--faint)}
+.stat .n{font-size:1.9rem;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{color:var(--muted);font-size:.85rem}
+.stat[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+
+.label{color:var(--muted);font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;font-weight:700;margin:0 0 8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.gcard,.wcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
+.gcard:hover,.wcard:hover{border-color:var(--faint)}
+.gcard[aria-pressed="true"],.wcard[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.gtop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.gn{font-weight:700;overflow-wrap:anywhere}
+.gm{color:var(--muted);font-size:.82rem}
+.gnums{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;font-variant-numeric:tabular-nums}
+.meter{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.meter span{display:block;height:100%;background:var(--fg);border-radius:3px}
+.wcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:600px){.wcards{grid-template-columns:1fr}}
+.wcard{flex-direction:row;align-items:center;justify-content:space-between}
+.wcard .n{font-size:1.4rem;font-weight:750;font-variant-numeric:tabular-nums}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.filters{display:flex;gap:4px;flex-wrap:wrap;background:var(--soft);padding:4px;border-radius:10px}
+.filters button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-size:.86rem;color:var(--muted);font-weight:650}
+.filters button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.search{flex:1 1 220px;max-width:320px}
+@media (max-width:600px){.search{max-width:none}}
+.search input,.field input,.field select,.field textarea{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:12px 14px;text-align:left;width:100%}
+.item:hover{border-color:var(--faint)}
+.item.b-tocall{border-left-color:var(--fg)}
+.item.b-deciding{border-left-color:var(--muted)}
+.item.b-accepted{border-left-color:var(--fg);border-left-style:double;border-left-width:6px}
+.item.b-closed{opacity:.6}
+@media (max-width:760px){.item{grid-template-columns:minmax(0,1fr)}}
+.item .nm{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .ct{color:var(--muted);font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:.73rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;line-height:1.45;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.pill.solid{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.pill.soft{background:var(--soft);border-color:var(--soft)}
+.pill.quiet{color:var(--muted)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+.notice{padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--fg);font-size:.9rem}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);background:var(--surface);z-index:30;box-shadow:-12px 0 40px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panel-head h2{margin:0;font-size:1.2rem}
+.panel-head p{margin:2px 0 0;color:var(--muted);font-size:.88rem}
+.close{border:0;background:var(--soft);width:34px;height:34px;border-radius:50%;font-size:1.1rem;line-height:1;flex:none}
+.panel-body{overflow-y:auto;padding:18px 20px 32px;display:flex;flex-direction:column;gap:22px}
+.sec h3{margin:0 0 8px;font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+dl.kv{display:grid;grid-template-columns:minmax(120px,38%) minmax(0,1fr);gap:6px 14px;margin:0;font-size:.9rem}
+@media (max-width:440px){dl.kv{grid-template-columns:1fr;gap:0}dl.kv dd{margin-bottom:8px}}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.phone{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.phone strong{font-size:1.15rem}
+.flagbox{padding:10px 12px;border-radius:8px;border:1px solid var(--fg);font-size:.88rem}
+.flagbox ul{margin:4px 0 0;padding-left:18px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:650}
+.field .hint{font-weight:400;color:var(--muted);font-size:.8rem}
+.field textarea{min-height:90px;resize:vertical;font-weight:400}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.frow{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:.9rem;z-index:50;max-width:calc(100vw - 32px)}
+
+/* groups + posters */
+.grow{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;flex-wrap:wrap}
+.gedit{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--fg);border-radius:12px;padding:16px}
+.check{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:560px){.pcard{grid-template-columns:1fr}}
+.thumb{width:100%;aspect-ratio:3/4;border-radius:8px;background:var(--soft);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);font-size:.85rem;text-align:center;padding:8px}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.msg{font-size:.86rem;color:var(--muted)}
+.col{display:flex;flex-direction:column;gap:12px}
 </style>
 </head>
 <body>
-<!--
-  Your Apps Script web app link (Deploy → Manage deployments → Web app URL, ends in /exec).
-  Do NOT put the admin key in this file: this page is public on GitHub.
--->
-<script>const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec";</script>
-
-<div class="gate">
-  <form class="card" id="form">
-    <h1>Admin console</h1>
-    <p>Group Counseling with Brendon &amp; Benjamin. Enter the admin key to open the console.</p>
-    <label for="key">Admin key
-      <input id="key" type="password" autocomplete="current-password" placeholder="Paste the admin key or the whole admin link">
-    </label>
-    <p>Run <strong>getAdminLink</strong> in Apps Script; the key is on the line "enter this admin key". Pasting the whole link works too.</p>
-    <label class="row" for="remember"><input id="remember" type="checkbox" checked> Remember on this device</label>
-    <p class="err" id="err" hidden></p>
-    <div class="btns">
-      <button type="submit">Open console</button>
-      <button type="button" class="ghost" id="forget" hidden>Forget saved key</button>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img class="lt" src="<?!= LOGO.um ?>" alt="Universiti Malaya"><img class="dk" src="<?!= LOGO.umDark ?>" alt="Universiti Malaya">
+      <img class="lt" src="<?!= LOGO.ptLight ?>" alt="PT Foundation"><img class="dk" src="<?!= LOGO.ptDark ?>" alt="PT Foundation">
+      <div><h1>Admin console</h1><p>Group Counseling with Brendon &amp; Benjamin · keep this link private</p></div>
     </div>
-  </form>
+    <div class="top-actions">
+      <span class="updated" id="updated">Loading…</span>
+      <button class="btn" type="button" id="refresh">Refresh</button>
+      <a class="btn" id="sheet-link" href="#" target="_blank" rel="noopener">Open Sheet</a>
+    </div>
+  </header>
+
+  <div id="err" class="notice" hidden role="alert"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Section">
+    <button type="button" role="tab" id="t-regs" aria-selected="true">Registrations<span class="badge" id="tocall-badge" hidden></span></button>
+    <button type="button" role="tab" id="t-groups" aria-selected="false">Groups</button>
+    <button type="button" role="tab" id="t-posters" aria-selected="false">Posters</button>
+  </nav>
+
+  <!-- Registrations -->
+  <section id="v-regs" class="col" style="gap:18px">
+    <div class="stats" aria-label="Summary">
+      <button class="stat" type="button" data-f="tocall"><span class="n" id="n-tocall">–</span><span class="l">To call</span></button>
+      <button class="stat" type="button" data-f="deciding"><span class="n" id="n-deciding">–</span><span class="l">Intake done, deciding</span></button>
+      <button class="stat" type="button" data-f="accepted"><span class="n" id="n-accepted">–</span><span class="l">Accepted into a group</span></button>
+      <button class="stat" type="button" data-f="flags"><span class="n" id="n-flags">–</span><span class="l">Need a closer look</span></button>
+    </div>
+    <div>
+      <p class="label">Groups · tap to filter</p>
+      <div class="cards" id="gcards"></div>
+    </div>
+    <div>
+      <p class="label">Still to call, by preferred time · tap to filter</p>
+      <div class="wcards">
+        <button class="wcard" type="button" data-w="Morning"><span><span class="gn">Morning</span><br><span class="gm">9 am – 12 pm</span></span><span class="n" id="wn-Morning">–</span></button>
+        <button class="wcard" type="button" data-w="Afternoon"><span><span class="gn">Afternoon</span><br><span class="gm">12 pm – 5 pm</span></span><span class="n" id="wn-Afternoon">–</span></button>
+        <button class="wcard" type="button" data-w="Evening"><span><span class="gn">Evening</span><br><span class="gm">5 pm – 9 pm</span></span><span class="n" id="wn-Evening">–</span></button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Show">
+        <button type="button" data-f="tocall" aria-pressed="true">To call</button>
+        <button type="button" data-f="deciding" aria-pressed="false">Deciding</button>
+        <button type="button" data-f="accepted" aria-pressed="false">Accepted</button>
+        <button type="button" data-f="closed" aria-pressed="false">Referred &amp; closed</button>
+        <button type="button" data-f="all" aria-pressed="false">All</button>
+      </div>
+      <label class="search" for="q"><input id="q" type="search" placeholder="Search name, phone, email or reference" autocomplete="off" aria-label="Search registrations"></label>
+    </div>
+    <div class="list" id="list"><div class="empty">Loading registrations…</div></div>
+  </section>
+
+  <!-- Groups -->
+  <section id="v-groups" class="col" hidden>
+    <div class="toolbar"><p class="msg" style="margin:0">Clients choose from the open groups on the registration form. Changes here go straight to the Groups tab of the Sheet.</p><button class="btn primary" type="button" id="g-add">Add a group</button></div>
+    <div id="g-editor"></div>
+    <div class="col" id="g-list"></div>
+  </section>
+
+  <!-- Posters -->
+  <section id="v-posters" class="col" hidden>
+    <p class="msg" style="margin:0">The main poster shows at the top of the registration form; group posters show inside each group's option. JPG, PNG or WebP; large images are resized before uploading.</p>
+    <div class="col" id="p-list"><div class="empty">Loading posters…</div></div>
+  </section>
 </div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="panel-head">
+    <div><h2 id="d-title">Client</h2><p id="d-sub"></p></div>
+    <button class="close" id="d-close" type="button" aria-label="Close details">×</button>
+  </div>
+  <div class="panel-body" id="d-body"></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
 
 <script>
 (() => {
-  const STORE = "gc-admin-key";
+  const KEY = "<?= adminKey ?>";
   const $ = id => document.getElementById(id);
-  const get = () => { try { return localStorage.getItem(STORE) || ""; } catch (e) { return ""; } };
-  const put = k => { try { localStorage.setItem(STORE, k); } catch (e) {} };
-  const forget = () => { try { localStorage.removeItem(STORE); } catch (e) {} };
-  const say = m => { $("err").textContent = m; $("err").hidden = !m; };
+  const run = (fn, ...a) => new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](KEY, ...a));
+  const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
+  const pill = (t, c) => el("span", "pill " + (c || ""), t);
+  let toastT;
+  const toast = m => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); };
 
-  // Opens the console as its own page (more reliable than showing it inside this site).
-  const go = key => { location.href = WEB_APP_URL + "?admin=" + encodeURIComponent(key); };
+  const BUCKET = { "To call": "tocall", "No answer yet": "tocall", "": "tocall", "Intake done": "deciding", "Accepted into group": "accepted", "Referred elsewhere": "closed", "Not proceeding": "closed" };
+  const PILL = { "To call": "solid", "No answer yet": "", "Intake done": "soft", "Accepted into group": "solid", "Referred elsewhere": "quiet", "Not proceeding": "quiet" };
+  const S = { regs: [], groups: [], filter: "tocall", win: null, grp: null, q: "", open: null, tab: "regs", posters: null, gEdit: null };
 
-  $("form").addEventListener("submit", e => {
-    e.preventDefault();
-    let k = $("key").value.trim();
-    const m = /[?&]admin=([^&#\s]+)/.exec(k); if (m) k = decodeURIComponent(m[1]);
-    k = k.replace(/[^A-Za-z0-9]/g, "");
-    if (k.length < 20) { say("That doesn't look like an admin key. Copy it again from getAdminLink."); return; }
-    if ($("remember").checked) put(k); else forget();
-    go(k);
-  });
-  $("forget").onclick = () => { forget(); $("forget").hidden = true; $("key").value = ""; say("Saved key removed from this device."); };
-
-  if (!/^https:\/\/script\.google\.com\/macros\/s\/AKfy[\w-]+\/exec$/.test(WEB_APP_URL)) {
-    say("This page isn't set up yet: the web app link in admin/index.html is missing or wrong.");
-    return;
+  const bucket = r => BUCKET[r["Status"] || ""] || "tocall";
+  const wins = r => String(r["Call times"] || "").split(/,\s*/).filter(Boolean);
+  const grpOf = r => r["Group"] || "Not sure yet";
+  const nameOf = r => r["Client name"] || "Unnamed";
+  function flags(r){
+    const f = [], a = Number(r["Age"]);
+    if (a > 0 && a < 18) f.push("Under 18: a parent or guardian must take part in intake");
+    if (r["Referral letter"] === "Yes") f.push("Has a referral letter");
+    if (["Yes", "Unsure"].includes(r["Prior relationship"])) f.push("Prior relationship with a counselor or supervisor: " + r["Prior relationship"] + (r["Relationship name"] ? " (" + r["Relationship name"] + ")" : ""));
+    const fam = r["Someone close in counseling / group"]; if (fam && fam !== "No") f.push("Someone close is in counseling or the group: " + fam);
+    if (r["Completing the form"] === "As a parent/legal guardian" && r["Person knows"] && r["Person knows"] !== "Yes") f.push("The person may not know about this registration (" + r["Person knows"] + ")");
+    return f;
   }
-  const saved = get();
-  if (saved) {
-    $("forget").hidden = false;
-    $("key").value = saved;
-    say("");
+  const inFilter = (r, f) => f === "all" ? true : f === "flags" ? (bucket(r) !== "closed" && flags(r).length > 0) : bucket(r) === f;
+  const waNumber = p => { let d = String(p || "").replace(/\D/g, ""); if (d.startsWith("0")) d = "6" + d; return d; };
+
+  /* ---------- load ---------- */
+  async function load(quiet){
+    try {
+      const d = await run("adminGetData");
+      S.regs = d.regs; S.groups = d.groups;
+      $("updated").textContent = "Updated " + d.loadedAt; $("sheet-link").href = d.sheetUrl; S.folderUrl = d.folderUrl;
+      $("err").hidden = true;
+      render(); if (S.open) renderPanel();
+      if (S.tab === "groups" && !S.gEdit) renderGroups();
+    } catch (e){
+      $("err").textContent = "Couldn't load registrations: " + (e.message || e) + ". If this keeps happening, run setup() and getAdminLink() again in Apps Script.";
+      $("err").hidden = false;
+      if (!quiet) $("list").textContent = "";
+    }
   }
-  $("key").focus();
+  $("refresh").onclick = () => { $("updated").textContent = "Refreshing…"; load(); };
+  setInterval(() => { if (!document.hidden && !S.open && !S.gEdit) load(true); }, 90000);
+
+  /* ---------- tabs ---------- */
+  function showTab(t){
+    S.tab = t;
+    [["regs","t-regs","v-regs"],["groups","t-groups","v-groups"],["posters","t-posters","v-posters"]].forEach(([k, tb, v]) => { $(tb).setAttribute("aria-selected", String(k === t)); $(v).hidden = k !== t; });
+    if (t === "groups") renderGroups();
+    if (t === "posters") loadPosters();
+  }
+  $("t-regs").onclick = () => showTab("regs");
+  $("t-groups").onclick = () => showTab("groups");
+  $("t-posters").onclick = () => showTab("posters");
+
+  /* ---------- registrations ---------- */
+  function render(){
+    const R = S.regs, count = f => R.filter(r => inFilter(r, f)).length;
+    ["tocall","deciding","accepted","flags"].forEach(f => $("n-" + f).textContent = count(f));
+    const tc = count("tocall"); $("tocall-badge").textContent = tc; $("tocall-badge").hidden = !tc;
+    const toCall = R.filter(r => bucket(r) === "tocall");
+    ["Morning","Afternoon","Evening"].forEach(w => $("wn-" + w).textContent = toCall.filter(r => wins(r).includes(w)).length);
+    document.querySelectorAll(".stat, .filters button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === S.filter)));
+    document.querySelectorAll(".wcard").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.w === S.win)));
+    renderGroupCards();
+
+    const q = S.q.toLowerCase();
+    let rows = R.filter(r => inFilter(r, S.filter))
+      .filter(r => !S.win || wins(r).includes(S.win))
+      .filter(r => !S.grp || grpOf(r) === S.grp)
+      .filter(r => !q || [nameOf(r), r["Mobile (WhatsApp)"], r["Email"], r["Reference"], r["Guardian name"]].join(" ").toLowerCase().includes(q));
+    const oldest = S.filter === "tocall" || S.filter === "flags";
+    rows.sort((a, b) => oldest ? a._row - b._row : b._row - a._row);
+
+    const list = $("list"); list.textContent = "";
+    if (!R.length){ list.appendChild(el("div", "empty", "No registrations yet. When clients register at groupcounseling.brendonban.me, they appear here.")); return; }
+    if (!rows.length){ list.appendChild(el("div", "empty", "Nothing matches this view.")); return; }
+    rows.forEach(r => {
+      const b = el("button", "item b-" + bucket(r)); b.type = "button"; b.id = "row-" + r["Reference"];
+      const who = el("div"); who.style.minWidth = "0";
+      who.appendChild(el("div", "nm", nameOf(r) + (r["Age"] ? ", " + r["Age"] : "")));
+      who.appendChild(el("div", "ct", [r["Mobile (WhatsApp)"], "registered " + r["Registered"], r["Handled by"] ? "with " + r["Handled by"] : ""].filter(Boolean).join(" · ")));
+      const mid = el("div", "pills"); mid.appendChild(pill(grpOf(r), "soft")); wins(r).forEach(w => mid.appendChild(pill(w)));
+      const st = el("div", "pills"); st.appendChild(pill(r["Status"] || "To call", PILL[r["Status"]] || "solid"));
+      if (flags(r).length && bucket(r) !== "closed") st.appendChild(pill("Check", ""));
+      b.append(who, mid, st); b.onclick = () => openPanel(r["Reference"]);
+      list.appendChild(b);
+    });
+  }
+  function renderGroupCards(){
+    const box = $("gcards"); box.textContent = "";
+    const names = S.groups.map(g => g.name);
+    const extra = [...new Set(S.regs.map(grpOf).filter(n => !names.includes(n)))];
+    const all = S.groups.map(g => g).concat(extra.map(n => ({ name: n, open: null, places: 0, schedule: "", venue: "" })));
+    if (!all.length){ box.appendChild(el("div", "empty", "No groups yet. Add them in the Groups tab.")); return; }
+    all.forEach(g => {
+      const mine = S.regs.filter(r => grpOf(r) === g.name);
+      const acc = mine.filter(r => bucket(r) === "accepted").length, wait = mine.filter(r => ["tocall","deciding"].includes(bucket(r))).length;
+      const c = el("button", "gcard"); c.type = "button"; c.setAttribute("aria-pressed", String(S.grp === g.name));
+      const t = el("div", "gtop"); t.appendChild(el("span", "gn", g.name)); if (g.open !== null) t.appendChild(pill(g.open ? "Open" : "Closed", g.open ? "solid" : "quiet")); c.appendChild(t);
+      const meta = [g.schedule, g.venue].filter(Boolean).join(" · "); if (meta) c.appendChild(el("span", "gm", meta));
+      const n = el("div", "gnums"); n.appendChild(el("span", null, g.places ? acc + " of " + g.places + " places filled" : acc + " accepted")); n.appendChild(el("span", null, wait + " waiting")); c.appendChild(n);
+      if (g.places){ const m = el("div", "meter"), s = el("span"); s.style.width = Math.min(100, Math.round(acc / g.places * 100)) + "%"; m.appendChild(s); c.appendChild(m); }
+      c.onclick = () => { S.grp = S.grp === g.name ? null : g.name; render(); };
+      box.appendChild(c);
+    });
+  }
+  document.querySelectorAll(".stat, .filters button").forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
+  document.querySelectorAll(".wcard").forEach(b => b.onclick = () => { S.win = S.win === b.dataset.w ? null : b.dataset.w; if (!["tocall","all","flags"].includes(S.filter)) S.filter = "tocall"; render(); });
+  $("q").addEventListener("input", e => { S.q = e.target.value.trim(); render(); });
+
+  /* ---------- client panel ---------- */
+  const find = ref => S.regs.find(r => r["Reference"] === ref);
+  function openPanel(ref){ S.open = ref; $("scrim").hidden = false; $("panel").hidden = false; renderPanel(); $("d-close").focus(); }
+  function closePanel(){ const ref = S.open; S.open = null; $("scrim").hidden = true; $("panel").hidden = true; const r = ref && $("row-" + ref); if (r) r.focus(); }
+  $("d-close").onclick = closePanel; $("scrim").onclick = closePanel;
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) closePanel(); });
+
+  async function save(ref, patch, msg){
+    const r = find(ref); if (!r) return;
+    const before = Object.assign({}, r);
+    Object.assign(r, patch); render(); renderPanel();
+    try {
+      const res = await run("adminUpdateReg", ref, patch);
+      if (!res.ok){ Object.assign(r, before); render(); renderPanel(); toast(res.message); return; }
+      toast(msg);
+    } catch (e){ Object.assign(r, before); render(); renderPanel(); toast("That didn't save. Please try again."); }
+  }
+  const stamp = () => new Date().toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  const kv = (dl, k, v) => { if (!v) return; dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); };
+  const sec = t => { const s = el("section", "sec"); s.appendChild(el("h3", null, t)); return s; };
+
+  function renderPanel(){
+    const r = find(S.open); if (!r){ closePanel(); return; }
+    const ref = r["Reference"], b = bucket(r), body = $("d-body");
+    $("d-title").textContent = nameOf(r);
+    $("d-sub").textContent = ref + " · registered " + r["Registered"];
+    body.textContent = "";
+
+    // Intake call
+    const call = sec("Intake call");
+    const ph = el("div", "phone"); ph.appendChild(el("strong", null, r["Mobile (WhatsApp)"]));
+    const cp = el("button", "btn small", "Copy number"); cp.type = "button";
+    cp.onclick = () => navigator.clipboard.writeText(r["Mobile (WhatsApp)"]).then(() => toast("Number copied"), () => toast("Couldn't copy. Select the number instead."));
+    const wa = el("a", "btn small", "Open in WhatsApp"); wa.href = "https://wa.me/" + waNumber(r["Mobile (WhatsApp)"]); wa.target = "_blank"; wa.rel = "noopener";
+    ph.append(cp, wa); call.appendChild(ph);
+    const wp = el("div", "pills"); wp.style.marginTop = "8px"; wins(r).forEach(w => wp.appendChild(pill(w))); call.appendChild(wp);
+    if (r["Timing note"]) call.appendChild(el("p", "msg", "Timing note: " + r["Timing note"]));
+    if (r["Completing the form"] === "As a parent/legal guardian") call.appendChild(el("p", "msg", "Completed by " + r["Guardian name"] + " (" + r["Guardian relationship"] + ", " + r["Guardian mobile"] + "). Contact first: " + (r["Contact first"] || "not stated") + "."));
+    body.appendChild(call);
+
+    const fl = flags(r);
+    if (fl.length){ const f = el("div", "flagbox"); f.appendChild(el("strong", null, "Check before the call")); const ul = el("ul"); fl.forEach(x => ul.appendChild(el("li", null, x))); f.appendChild(ul); body.appendChild(f); }
+
+    // Status
+    const st = sec("Status");
+    st.appendChild(el("div", "pills")).appendChild(pill(r["Status"] || "To call", PILL[r["Status"]] || "solid"));
+    const acts = el("div", "acts"); acts.style.marginTop = "10px";
+    const act = (label, primary, fn) => { const x = el("button", "btn small" + (primary ? " primary" : ""), label); x.type = "button"; x.onclick = fn; acts.appendChild(x); };
+    if (b === "tocall"){
+      act("Called, no answer", false, () => save(ref, { "Status": "No answer yet", "Counselor notes": ("[" + stamp() + "] Called, no answer.\n" + (r["Counselor notes"] || "")).trim() }, "Call attempt logged"));
+      act("Intake call done", true, () => save(ref, { "Status": "Intake done" }, "Marked intake done"));
+    }
+    if (b !== "accepted") act("Accept into group", b === "deciding", () => {
+      const g = grpOf(r);
+      if (g === "Not sure yet"){ toast("Choose a group for this client first."); const s = $("d-group"); if (s) s.focus(); return; }
+      const grp = S.groups.find(x => x.name === g), n = S.regs.filter(x => grpOf(x) === g && bucket(x) === "accepted").length + 1;
+      save(ref, { "Status": "Accepted into group" }, grp && grp.places && n >= grp.places ? "Accepted. " + g + " is now " + (n > grp.places ? "over capacity (" + n + " of " + grp.places + ")." : "full.") : "Accepted into " + g);
+    });
+    if (r["Status"] !== "Referred elsewhere") act("Referred elsewhere", false, () => save(ref, { "Status": "Referred elsewhere" }, "Marked referred"));
+    if (r["Status"] !== "Not proceeding") act("Not proceeding", false, () => save(ref, { "Status": "Not proceeding" }, "Marked not proceeding"));
+    if (b !== "tocall") act("Move back to To call", false, () => save(ref, { "Status": "To call" }, "Moved back to To call"));
+    st.appendChild(acts);
+
+    const fr = el("div", "frow"); fr.style.marginTop = "14px";
+    const hl = el("label", "field", "Handled by"); hl.htmlFor = "d-assign";
+    const hs = el("select"); hs.id = "d-assign"; ["", "Brendon", "Benjamin"].forEach(n => { const o = el("option", null, n || "Not assigned"); o.value = n; hs.appendChild(o); });
+    hs.value = r["Handled by"] || ""; hs.onchange = () => save(ref, { "Handled by": hs.value }, hs.value ? "Assigned to " + hs.value : "Unassigned");
+    hl.appendChild(hs); fr.appendChild(hl);
+    const gl = el("label", "field", "Group"); gl.htmlFor = "d-group";
+    const gs = el("select"); gs.id = "d-group";
+    const opts = S.groups.map(g => [g.name, g.name + (g.open ? "" : " (closed)")]).concat([["Not sure yet", "Not sure yet"]]);
+    if (!opts.some(o => o[0] === grpOf(r))) opts.push([grpOf(r), grpOf(r) + " (removed)"]);
+    opts.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; gs.appendChild(o); });
+    gs.value = grpOf(r); gs.onchange = () => save(ref, { "Group": gs.value }, "Moved to " + gs.value);
+    gl.appendChild(gs); fr.appendChild(gl); st.appendChild(fr);
+
+    const nl = el("label", "field", "Counselor notes"); nl.htmlFor = "d-notes"; nl.style.marginTop = "12px";
+    nl.appendChild(el("span", "hint", "Brief notes only; clinical detail belongs in your case notes. Saved to the Sheet."));
+    const ta = el("textarea"); ta.id = "d-notes"; ta.value = r["Counselor notes"] || ""; nl.appendChild(ta); st.appendChild(nl);
+    const sv = el("button", "btn small", "Save notes"); sv.type = "button"; sv.style.marginTop = "8px";
+    sv.onclick = () => { if (ta.value !== (r["Counselor notes"] || "")) save(ref, { "Counselor notes": ta.value }, "Notes saved"); else toast("No changes to save"); };
+    st.appendChild(sv); body.appendChild(st);
+
+    // Details
+    const blocks = [
+      ["About the client", [["NRIC / Passport", "NRIC / Passport"], ["Date of birth", "Date of birth"], ["Age", "Age"], ["Gender", "Gender"], ["Pronouns", "Pronouns"], ["Religion", "Religion"], ["Nationality", "Nationality"], ["Languages", "Preferred languages"], ["Considerations", "Considerations"]]],
+      ["Background", [["Referral letter", "Referral letter"], ["Prior relationship", "Prior relationship"], ["Relationship name", "Relationship name"], ["Someone close in counseling", "Someone close in counseling / group"], ["Before the call", "Before the call"], ["How referred", "How referred"]]],
+      ["Contact", [["Email", "Email"], ["Mobile (WhatsApp)", "Mobile (WhatsApp)"], ["Address", "Address"], ["Completing the form", "Completing the form"], ["Guardian", "Guardian name"], ["Guardian relationship", "Guardian relationship"], ["Guardian mobile", "Guardian mobile"], ["Guardian email", "Guardian email"], ["Person knows", "Person knows"], ["Contact first", "Contact first"]]],
+    ];
+    blocks.forEach(([t, rows]) => { const s = sec(t), dl = el("dl", "kv"); rows.forEach(([k, f]) => kv(dl, k, r[f])); s.appendChild(dl); body.appendChild(s); });
+    const ec = sec("Emergency contacts"), edl = el("dl", "kv");
+    kv(edl, "Contact 1", [r["Emergency contact 1"], r["EC1 relationship"] && "(" + r["EC1 relationship"] + ")", r["EC1 phone"]].filter(Boolean).join(" "));
+    kv(edl, "Contact 2", [r["Emergency contact 2"], r["EC2 relationship"] && "(" + r["EC2 relationship"] + ")", r["EC2 phone"]].filter(Boolean).join(" "));
+    if (r["Minor: guardian name"]) kv(edl, "Parent/guardian (under 18)", [r["Minor: guardian name"], r["Minor: guardian NRIC"], r["Minor: guardian mobile"]].filter(Boolean).join(" · "));
+    ec.appendChild(edl); body.appendChild(ec);
+    const cs = sec("Consent and signature"), cdl = el("dl", "kv");
+    kv(cdl, "Recording", r["Recording consent"]); kv(cdl, "Policies & treatment", r["Policies & treatment consent"]); kv(cdl, "Guardian consent", r["Guardian consent (minor)"]);
+    kv(cdl, "PDPA consent", r["PDPA explicit consent"]); kv(cdl, "Emergency contacts agreed", r["Emergency contacts agreed"]);
+    kv(cdl, "Signed by", r["Signed by"] + (r["Signed date"] ? " on " + r["Signed date"] : "")); kv(cdl, "Confirmation email", r["Confirmation email"]);
+    cs.appendChild(cdl);
+    if (/^https:\/\//.test(r["Signed PDF"] || "")){ const a = el("a", "btn small", "Open signed PDF"); a.href = r["Signed PDF"]; a.target = "_blank"; a.rel = "noopener"; a.style.marginTop = "10px"; a.style.alignSelf = "flex-start"; cs.appendChild(a); }
+    body.appendChild(cs);
+  }
+
+  /* ---------- groups ---------- */
+  function renderGroups(){
+    const ed = $("g-editor"); ed.textContent = "";
+    if (S.gEdit) ed.appendChild(groupForm(S.gEdit));
+    const list = $("g-list"); list.textContent = "";
+    if (!S.groups.length){ list.appendChild(el("div", "empty", "No groups yet. Add one so clients can choose it on the form.")); return; }
+    S.groups.forEach(g => {
+      const acc = S.regs.filter(r => grpOf(r) === g.name && bucket(r) === "accepted").length;
+      const row = el("div", "grow"), l = el("div"); l.style.minWidth = "0";
+      const t = el("div", "gtop"); t.style.justifyContent = "flex-start"; t.appendChild(el("span", "gn", g.name)); t.appendChild(pill(g.open ? "Open" : "Closed", g.open ? "solid" : "quiet")); l.appendChild(t);
+      l.appendChild(el("div", "gm", [g.schedule, g.venue, g.places ? acc + " of " + g.places + " places filled" : acc + " accepted"].filter(Boolean).join(" · ")));
+      if (g.description) l.appendChild(el("div", "gm", g.description));
+      const a = el("div", "acts");
+      const e = el("button", "btn small", "Edit"); e.type = "button"; e.onclick = () => { S.gEdit = g.name; renderGroups(); window.scrollTo({ top: 0 }); };
+      const o = el("button", "btn small", g.open ? "Close registration" : "Reopen"); o.type = "button";
+      o.onclick = async () => { o.disabled = true; const res = await run("adminSaveGroup", g.name, Object.assign({}, g, { open: !g.open })).catch(() => ({ ok: false, message: "That didn't save." })); if (!res.ok){ toast(res.message); o.disabled = false; return; } toast(g.open ? g.name + " closed to new registrations" : g.name + " reopened"); await load(true); renderGroups(); };
+      a.append(e, o); row.append(l, a); list.appendChild(row);
+    });
+  }
+  $("g-add").onclick = () => { S.gEdit = "__new"; renderGroups(); const n = $("ge-name"); if (n) n.focus(); };
+  function field(id, label, value, ph, area){
+    const l = el("label", "field", label); l.htmlFor = id;
+    const i = el(area ? "textarea" : "input"); i.id = id; i.value = value || ""; if (ph) i.placeholder = ph; l.appendChild(i); return l;
+  }
+  function groupForm(name){
+    const g = name === "__new" ? { open: true } : (S.groups.find(x => x.name === name) || { open: true });
+    const f = el("form", "gedit"); f.noValidate = true;
+    f.appendChild(el("strong", null, name === "__new" ? "New group" : "Edit " + g.name));
+    f.appendChild(field("ge-name", "Group name *", g.name, "e.g. Managing stress together"));
+    f.appendChild(field("ge-desc", "What it's about (clients see this)", g.description, "Two or three sentences", true));
+    const r = el("div", "frow"); r.appendChild(field("ge-when", "When", g.schedule, "e.g. Thursdays 7–9 pm, 6 weeks from 5 Nov")); r.appendChild(field("ge-where", "Where", g.venue, "e.g. PT Foundation, Kuala Lumpur")); f.appendChild(r);
+    const pl = field("ge-places", "Places (blank for no limit)", g.places || "", "e.g. 8"); pl.querySelector("input").inputMode = "numeric"; f.appendChild(pl);
+    const ck = el("label", "check"); const cb = el("input"); cb.type = "checkbox"; cb.id = "ge-open"; cb.checked = g.open !== false; ck.append(cb, document.createTextNode("Open for registration")); f.appendChild(ck);
+    if (name !== "__new") f.appendChild(el("p", "msg", "Renaming a group doesn't change the group name on registrations already made."));
+    const m = el("p", "msg"); m.hidden = true; f.appendChild(m);
+    const a = el("div", "acts");
+    const sv = el("button", "btn primary small", name === "__new" ? "Add group" : "Save changes"); sv.type = "submit";
+    const cn = el("button", "btn small", "Cancel"); cn.type = "button"; cn.onclick = () => { S.gEdit = null; renderGroups(); };
+    a.append(sv, cn); f.appendChild(a);
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const places = $("ge-places").value.trim();
+      if (places && !/^\d+$/.test(places)){ m.textContent = "Places should be a whole number, or blank."; m.hidden = false; return; }
+      sv.disabled = true;
+      const data = { name: $("ge-name").value.trim(), description: $("ge-desc").value.trim(), schedule: $("ge-when").value.trim(), venue: $("ge-where").value.trim(), places: places ? Number(places) : 0, open: $("ge-open").checked };
+      const res = await run("adminSaveGroup", name === "__new" ? "" : name, data).catch(() => ({ ok: false, message: "That didn't save. Please try again." }));
+      if (!res.ok){ m.textContent = res.message; m.hidden = false; sv.disabled = false; return; }
+      S.gEdit = null; toast(data.name + (name === "__new" ? " added" : " saved")); await load(true); renderGroups();
+    };
+    return f;
+  }
+
+  /* ---------- posters ---------- */
+  async function loadPosters(){
+    try { S.posters = await run("adminGetState"); renderPosters(); }
+    catch (e){ $("p-list").textContent = "Couldn't load posters: " + (e.message || e); }
+  }
+  function renderPosters(){
+    const box = $("p-list"); box.textContent = "";
+    box.appendChild(posterCard("", "Main poster", "Shown at the top of the registration form.", S.posters.main));
+    box.appendChild(el("p", "label", "Group posters"));
+    if (!S.posters.groups.length){ box.appendChild(el("div", "empty", "No groups yet. Add them in the Groups tab.")); return; }
+    S.posters.groups.forEach(g => box.appendChild(posterCard(g.name, g.name, "Shown inside this group's option on the form" + (g.open ? "." : " once the group is open."), g.poster)));
+  }
+  function posterCard(target, title, sub, poster){
+    const c = el("section", "pcard"), th = el("div", "thumb");
+    if (poster){ const i = el("img"); i.src = poster; i.alt = "Poster for " + title; th.appendChild(i); } else th.textContent = "No poster yet";
+    const info = el("div", "col"); info.style.gap = "8px"; info.style.minWidth = "0";
+    info.appendChild(el("strong", null, title)); info.appendChild(el("span", "gm", sub));
+    const a = el("div", "acts"), msg = el("div", "msg");
+    const file = el("input"); file.type = "file"; file.accept = "image/jpeg,image/png,image/webp";
+    const up = el("button", "btn small primary", poster ? "Replace poster" : "Upload poster"); up.type = "button"; up.onclick = () => file.click();
+    file.onchange = async () => {
+      const f = file.files[0]; if (!f) return; up.disabled = true; msg.textContent = "Uploading…";
+      try { const data = await shrink(f); const r = await run("adminSetPoster", target, data); if (!r.ok){ msg.textContent = r.message; up.disabled = false; return; } await loadPosters(); toast("Poster saved"); }
+      catch (e){ msg.textContent = "Upload didn't work: " + (e.message || e); up.disabled = false; }
+      file.value = "";
+    };
+    a.append(file, up);
+    if (poster){
+      const rm = el("button", "btn small", "Remove"); rm.type = "button";
+      rm.onclick = async () => {
+        if (!rm.classList.contains("armed")){ rm.classList.add("armed"); rm.textContent = "Tap again to remove"; setTimeout(() => { if (rm.isConnected){ rm.classList.remove("armed"); rm.textContent = "Remove"; } }, 4000); return; }
+        rm.disabled = true; try { await run("adminRemovePoster", target); await loadPosters(); toast("Poster removed"); } catch (e){ msg.textContent = "Couldn't remove it."; rm.disabled = false; }
+      };
+      a.appendChild(rm);
+    }
+    info.append(a, msg); c.append(th, info); return c;
+  }
+  function shrink(file){
+    return new Promise((res, rej) => {
+      const fr = new FileReader(); fr.onerror = () => rej(new Error("Couldn't read that file."));
+      fr.onload = () => { const img = new Image(); img.onerror = () => rej(new Error("That file isn't an image we can read."));
+        img.onload = () => { const max = 1600; if (img.width <= max && file.size < 1.5e6 && /image\/(jpeg|png|webp)/.test(file.type)) return res(fr.result);
+          const w = Math.min(max, img.width), h = Math.round(img.height * w / img.width), c = document.createElement("canvas"); c.width = w; c.height = h;
+          const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h); res(c.toDataURL("image/jpeg", 0.86)); };
+        img.src = fr.result; };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  load();
 })();
 </script>
 </body>
