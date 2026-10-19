@@ -243,6 +243,10 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events
 
   /* ---------- load ---------- */
   async function load(quiet){
+    if (!(window.google && google.script && google.script.run)){
+      $("err").textContent = "This console only works when opened from your Apps Script link (…/exec?admin=…) or from groupcounseling.brendonban.me/admin. This copy of the file isn't running inside Apps Script.";
+      $("err").hidden = false; $("list").textContent = ""; $("updated").textContent = ""; return;
+    }
     try {
       const d = await run("adminGetData");
       S.regs = d.regs; S.groups = d.groups;
