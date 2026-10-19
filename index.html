@@ -12,15 +12,25 @@
   iframe { display: block; border: 0; width: 100%; height: 100vh; height: 100dvh; }
   .fallback { font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1b1d22; padding: 24px; text-align: center; }
   .fallback a { color: #111; font-weight: 600; }
+  .help { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); font: 600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+          background: #fff; color: #333; border: 1px solid #ddd; border-radius: 999px; padding: 6px 12px; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 </style>
 </head>
 <body>
 <!--
-  ▼ Paste your Apps Script web app link here (Deploy → Manage deployments → Web app URL, ends in /exec).
+  Your Apps Script web app link (Deploy → Manage deployments → Web app URL, ends in /exec).
 -->
+<script>
+  const FORM_URL = "https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec";
+  // Phones and tablets often refuse to show a Google form inside another site,
+  // so on those devices go straight to the form.
+  const touch = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  if (touch) location.replace(FORM_URL);
+</script>
 <iframe id="form" title="Group counseling registration form"
   src="https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec"
   allow="clipboard-write"></iframe>
+<a class="help" href="https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec">Form not showing? Open it directly</a>
 <noscript><p class="fallback">If the form doesn't appear, <a href="https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec">open the registration form here</a>.</p></noscript>
 </body>
 </html>
