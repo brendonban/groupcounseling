@@ -10,84 +10,80 @@
           --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
   @media (prefers-color-scheme: dark) { :root { --bg:#111111; --surface:#1B1B1B; --line:#353535; --fg:#F2F2F2; --muted:#A8A8A8; color-scheme:dark; } }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
-  iframe { display: block; border: 0; width: 100%; height: 100vh; height: 100dvh; }
-  .gate { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
+  .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
   .card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
   h1 { margin: 0; font-size: 1.3rem; }
   p { margin: 0; color: var(--muted); font-size: .92rem; }
   label { display: flex; flex-direction: column; gap: 6px; font-weight: 650; font-size: .88rem; }
   input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
-  .row { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--muted); }
+  .row { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 400; font-size: .9rem; color: var(--muted); }
   .row input { width: auto; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
   button { font: inherit; font-weight: 650; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--fg); background: var(--fg); color: var(--surface); cursor: pointer; }
+  button.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .err { color: var(--fg); font-weight: 600; }
-  .change { position: fixed; right: 12px; bottom: 12px; font: 600 12px var(--font); padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
 </style>
 </head>
 <body>
 <!--
-  ▼ Paste your Apps Script web app link here (Deploy → Manage deployments → Web app URL, ends in /exec).
-    Do NOT paste the ?admin= key here: this page is public on GitHub.
+  Your Apps Script web app link (Deploy → Manage deployments → Web app URL, ends in /exec).
+  Do NOT put the admin key in this file: this page is public on GitHub.
 -->
 <script>const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec";</script>
 
-<div class="gate" id="gate" hidden>
+<div class="gate">
   <form class="card" id="form">
     <h1>Admin console</h1>
     <p>Group Counseling with Brendon &amp; Benjamin. Enter the admin key to open the console.</p>
     <label for="key">Admin key
-      <input id="key" type="password" autocomplete="current-password" required placeholder="Paste the admin key">
+      <input id="key" type="password" autocomplete="current-password" placeholder="Paste the admin key or the whole admin link">
     </label>
-    <p>The key is the part after <strong>?admin=</strong> in the link from <strong>getAdminLink</strong>. You can also paste the whole link.</p>
+    <p>Run <strong>getAdminLink</strong> in Apps Script; the key is on the line "enter this admin key". Pasting the whole link works too.</p>
     <label class="row" for="remember"><input id="remember" type="checkbox" checked> Remember on this device</label>
     <p class="err" id="err" hidden></p>
-    <button type="submit">Open console</button>
+    <div class="btns">
+      <button type="submit">Open console</button>
+      <button type="button" class="ghost" id="forget" hidden>Forget saved key</button>
+    </div>
   </form>
 </div>
-<button class="change" id="change" type="button" hidden>Change key</button>
 
 <script>
 (() => {
   const STORE = "gc-admin-key";
-  const gate = document.getElementById("gate"), form = document.getElementById("form"), err = document.getElementById("err");
-  const get = () => { try { return localStorage.getItem(STORE) || sessionStorage.getItem(STORE) || ""; } catch (e) { return ""; } };
-  const put = (k, keep) => { try { (keep ? localStorage : sessionStorage).setItem(STORE, k); } catch (e) {} };
-  const forget = () => { try { localStorage.removeItem(STORE); sessionStorage.removeItem(STORE); } catch (e) {} };
+  const $ = id => document.getElementById(id);
+  const get = () => { try { return localStorage.getItem(STORE) || ""; } catch (e) { return ""; } };
+  const put = k => { try { localStorage.setItem(STORE, k); } catch (e) {} };
+  const forget = () => { try { localStorage.removeItem(STORE); } catch (e) {} };
+  const say = m => { $("err").textContent = m; $("err").hidden = !m; };
 
-  function open(key) {
-    gate.hidden = true;
-    const f = document.createElement("iframe");
-    f.title = "Admin console";
-    f.allow = "clipboard-write";
-    f.src = WEB_APP_URL + "?admin=" + encodeURIComponent(key);
-    document.body.appendChild(f);
-    document.getElementById("change").hidden = false;
-  }
-  function showGate(msg) {
-    gate.hidden = false;
-    err.textContent = msg || ""; err.hidden = !msg;
-    document.getElementById("key").focus();
-  }
+  // Opens the console as its own page (more reliable than showing it inside this site).
+  const go = key => { location.href = WEB_APP_URL + "?admin=" + encodeURIComponent(key); };
 
-  form.addEventListener("submit", e => {
+  $("form").addEventListener("submit", e => {
     e.preventDefault();
-    let k = document.getElementById("key").value.trim();
+    let k = $("key").value.trim();
     const m = /[?&]admin=([^&#\s]+)/.exec(k); if (m) k = decodeURIComponent(m[1]);
-    if (!/^[A-Za-z0-9]{20,}$/.test(k)) return showGate("That doesn't look like an admin key. Copy it again from getAdminLink.");
-    put(k, document.getElementById("remember").checked);
-    open(k);
+    k = k.replace(/[^A-Za-z0-9]/g, "");
+    if (k.length < 20) { say("That doesn't look like an admin key. Copy it again from getAdminLink."); return; }
+    if ($("remember").checked) put(k); else forget();
+    go(k);
   });
-  document.getElementById("change").onclick = () => { forget(); location.reload(); };
+  $("forget").onclick = () => { forget(); $("forget").hidden = true; $("key").value = ""; say("Saved key removed from this device."); };
 
-  // Checks the link has a real deployment id in it (not the placeholder text).
   if (!/^https:\/\/script\.google\.com\/macros\/s\/AKfy[\w-]+\/exec$/.test(WEB_APP_URL)) {
-    showGate("This page isn't set up yet: paste your web app link into admin/index.html on GitHub.");
+    say("This page isn't set up yet: the web app link in admin/index.html is missing or wrong.");
     return;
   }
   const saved = get();
-  saved ? open(saved) : showGate();
+  if (saved) {
+    $("forget").hidden = false;
+    $("key").value = saved;
+    say("");
+  }
+  $("key").focus();
 })();
 </script>
 </body>
