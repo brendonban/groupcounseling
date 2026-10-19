@@ -81,7 +81,8 @@
   });
   document.getElementById("change").onclick = () => { forget(); location.reload(); };
 
-  if (/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/.test(WEB_APP_URL)) {
+  // Checks the link has a real deployment id in it (not the placeholder text).
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/AKfy[\w-]+\/exec$/.test(WEB_APP_URL)) {
     showGate("This page isn't set up yet: paste your web app link into admin/index.html on GitHub.");
     return;
   }
