@@ -1,89 +1,654 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<base target="_top">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Admin console – Group Counseling</title>
 <style>
-  :root { --bg:#F4F4F4; --surface:#FFFFFF; --line:#DDDDDD; --fg:#111111; --muted:#5E5E5E;
-          --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#111111; --surface:#1B1B1B; --line:#353535; --fg:#F2F2F2; --muted:#A8A8A8; color-scheme:dark; } }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
-  .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
-  .card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-  h1 { margin: 0; font-size: 1.3rem; }
-  p { margin: 0; color: var(--muted); font-size: .92rem; }
-  label { display: flex; flex-direction: column; gap: 6px; font-weight: 650; font-size: .88rem; }
-  input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
-  .row { display: flex; flex-direction: row; align-items: center; gap: 8px; font-weight: 400; font-size: .9rem; color: var(--muted); }
-  .row input { width: auto; }
-  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-  button { font: inherit; font-weight: 650; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--fg); background: var(--fg); color: var(--surface); cursor: pointer; }
-  button.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
-  .err { color: var(--fg); font-weight: 600; }
+/* Layout: a working console. Counts on top, filters, then registrations as rows; details slide in from the right. Black and white. */
+:root{
+  --bg:#F4F4F4; --surface:#FFFFFF; --soft:#EEEEEE; --line:#DDDDDD; --fg:#111111; --muted:#5E5E5E; --faint:#B5B5B5;
+  --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111111; --surface:#1B1B1B; --soft:#262626; --line:#353535; --fg:#F2F2F2; --muted:#A8A8A8; --faint:#5A5A5A; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+[hidden]{display:none!important}
+a{color:var(--fg)}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:18px}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.brand img{display:block;height:40px;width:auto}
+.brand .dk{display:none}
+@media (prefers-color-scheme: dark){.brand .lt{display:none}.brand .dk{display:block}}
+.brand h1{margin:0;font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:0;color:var(--muted);font-size:.85rem}
+@media (max-width:560px){.brand img{display:none!important}header.top{flex-direction:column;align-items:stretch}.top-actions .updated{flex:1 0 100%}.top-actions .btn{flex:1}}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.updated{color:var(--muted);font-size:.82rem}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;padding:8px 14px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:.88rem;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.btn.small{padding:5px 10px;font-size:.83rem;border-radius:7px}
+.btn.armed{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.btn:disabled{opacity:.45;cursor:default}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:transparent;padding:10px 4px;margin-right:18px;font-weight:650;font-size:1rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.tabs .badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--fg);color:var(--surface);font-size:.72rem;line-height:19px;text-align:center}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.stat:hover{border-color:var(--faint)}
+.stat .n{font-size:1.9rem;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{color:var(--muted);font-size:.85rem}
+.stat[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+
+.label{color:var(--muted);font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;font-weight:700;margin:0 0 8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.gcard,.wcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
+.gcard:hover,.wcard:hover{border-color:var(--faint)}
+.gcard[aria-pressed="true"],.wcard[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.gtop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.gn{font-weight:700;overflow-wrap:anywhere}
+.gm{color:var(--muted);font-size:.82rem}
+.gnums{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;font-variant-numeric:tabular-nums}
+.meter{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.meter span{display:block;height:100%;background:var(--fg);border-radius:3px}
+.wcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:600px){.wcards{grid-template-columns:1fr}}
+.wcard{flex-direction:row;align-items:center;justify-content:space-between}
+.wcard .n{font-size:1.4rem;font-weight:750;font-variant-numeric:tabular-nums}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.filters{display:flex;gap:4px;flex-wrap:wrap;background:var(--soft);padding:4px;border-radius:10px}
+.filters button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-size:.86rem;color:var(--muted);font-weight:650}
+.filters button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.search{flex:1 1 220px;max-width:320px}
+@media (max-width:600px){.search{max-width:none}}
+.search input,.field input,.field select,.field textarea{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:12px 14px;text-align:left;width:100%}
+.item:hover{border-color:var(--faint)}
+.item.b-tocall{border-left-color:var(--fg)}
+.item.b-toregister{border-left-color:var(--muted)}
+.item.b-registered{border-left-color:var(--fg);border-left-style:dashed}
+.item.b-accepted{border-left-color:var(--fg);border-left-style:double;border-left-width:6px}
+.item.b-closed{opacity:.6}
+@media (max-width:760px){.item{grid-template-columns:minmax(0,1fr)}}
+.item .nm{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .ct{color:var(--muted);font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:.73rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;line-height:1.45;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.pill.solid{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+.pill.soft{background:var(--soft);border-color:var(--soft)}
+.pill.quiet{color:var(--muted)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+.notice{padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--fg);font-size:.9rem}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);background:var(--surface);z-index:30;box-shadow:-12px 0 40px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panel-head h2{margin:0;font-size:1.2rem}
+.panel-head p{margin:2px 0 0;color:var(--muted);font-size:.88rem}
+.close{border:0;background:var(--soft);width:34px;height:34px;border-radius:50%;font-size:1.1rem;line-height:1;flex:none}
+.panel-body{overflow-y:auto;padding:18px 20px 32px;display:flex;flex-direction:column;gap:22px}
+.sec h3{margin:0 0 8px;font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+dl.kv{display:grid;grid-template-columns:minmax(120px,38%) minmax(0,1fr);gap:6px 14px;margin:0;font-size:.9rem}
+@media (max-width:440px){dl.kv{grid-template-columns:1fr;gap:0}dl.kv dd{margin-bottom:8px}}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.phone{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.phone strong{font-size:1.15rem}
+.prebox{border:1px solid var(--line);border-radius:10px;padding:0 14px}
+.prebox[open]{padding-bottom:14px}
+.prebox>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:12px 0}
+.prebox>summary::-webkit-details-marker{display:none}
+.prebox>summary::before{content:"▸";color:var(--muted);font-size:.8rem}
+.prebox[open]>summary::before{content:"▾"}
+.prebox>summary .h{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.prebox>summary .msg{font-size:.8rem}
+.pq{display:flex;flex-direction:column;gap:4px;margin:14px 0 0;padding:0;border:0;min-width:0}
+.pq .q,.pq legend{font-size:.88rem;font-weight:650;padding:0;margin-bottom:2px}
+.pq .hint{font-size:.8rem;color:var(--muted)}
+.pq textarea,.pq input:not([type]),.prebox select{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-weight:400}
+.pq textarea{min-height:56px;resize:vertical}
+.pq .opts{display:flex;flex-wrap:wrap;gap:4px 16px;margin:2px 0 4px}
+.pq .check{font-weight:400;padding:3px 0}
+.pq .opts.col{flex-direction:column;gap:2px}
+.pq .check input{width:17px;height:17px;margin:0;flex:none}
+.flagbox{padding:10px 12px;border-radius:8px;border:1px solid var(--fg);font-size:.88rem}
+.flagbox ul{margin:4px 0 0;padding-left:18px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.84rem;font-weight:650}
+.field .hint{font-weight:400;color:var(--muted);font-size:.8rem}
+.field textarea{min-height:90px;resize:vertical;font-weight:400}
+.field .check{display:flex;align-items:center;gap:8px;font-weight:400;font-size:.9rem;padding:4px 0}
+.field .check input{width:18px;height:18px;margin:0;padding:0;flex:none}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.frow{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:.9rem;z-index:50;max-width:calc(100vw - 32px)}
+
+/* groups + posters */
+.grow{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;flex-wrap:wrap}
+.gedit{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--fg);border-radius:12px;padding:16px}
+.check{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:560px){.pcard{grid-template-columns:1fr}}
+.thumb{width:100%;aspect-ratio:3/4;border-radius:8px;background:var(--soft);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);font-size:.85rem;text-align:center;padding:8px}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.msg{font-size:.86rem;color:var(--muted)}
+.col{display:flex;flex-direction:column;gap:12px}
 </style>
 </head>
 <body>
-<!--
-  Your Apps Script web app link (Deploy → Manage deployments → Web app URL, ends in /exec).
-  Do NOT put the admin key in this file: this page is public on GitHub.
--->
-<script>const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyPaS74j4ENxzpS0lXUyKWrMWJqEsfvuJYrNCp80PgZyOmRKFnh8kb3ggh9r-sQhy4u/exec";</script>
-
-<div class="gate">
-  <form class="card" id="form">
-    <h1>Admin console</h1>
-    <p>Group Counseling with Brendon &amp; Benjamin. Enter the admin key to open the console.</p>
-    <label for="key">Admin key
-      <input id="key" type="password" autocomplete="current-password" placeholder="Paste the admin key or the whole admin link">
-    </label>
-    <p>Run <strong>getAdminLink</strong> in Apps Script; the key is on the line "enter this admin key". Pasting the whole link works too.</p>
-    <label class="row" for="remember"><input id="remember" type="checkbox" checked> Remember on this device</label>
-    <p class="err" id="err" hidden></p>
-    <div class="btns">
-      <button type="submit">Open console</button>
-      <button type="button" class="ghost" id="forget" hidden>Forget saved key</button>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img class="lt" src="<?!= LOGO.um ?>" alt="Universiti Malaya"><img class="dk" src="<?!= LOGO.umDark ?>" alt="Universiti Malaya">
+      <img class="lt" src="<?!= LOGO.ptLight ?>" alt="PT Foundation"><img class="dk" src="<?!= LOGO.ptDark ?>" alt="PT Foundation">
+      <div><h1>Admin console</h1><p>Group Counseling with Brendon &amp; Benjamin · keep this link private</p></div>
     </div>
-  </form>
+    <div class="top-actions">
+      <span class="updated" id="updated">Loading…</span>
+      <button class="btn" type="button" id="refresh">Refresh</button>
+      <a class="btn" id="sheet-link" href="#" target="_blank" rel="noopener">Open Sheet</a>
+    </div>
+  </header>
+
+  <div id="err" class="notice" hidden role="alert"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Section">
+    <button type="button" role="tab" id="t-regs" aria-selected="true">People<span class="badge" id="tocall-badge" hidden></span></button>
+    <button type="button" role="tab" id="t-groups" aria-selected="false">Groups</button>
+    <button type="button" role="tab" id="t-posters" aria-selected="false">Posters</button>
+  </nav>
+
+  <!-- Registrations -->
+  <section id="v-regs" class="col" style="gap:18px">
+    <div class="stats" aria-label="Summary">
+      <button class="stat" type="button" data-f="tocall"><span class="n" id="n-tocall">–</span><span class="l">To call (pre-screen)</span></button>
+      <button class="stat" type="button" data-f="toregister"><span class="n" id="n-toregister">–</span><span class="l">Waiting to register</span></button>
+      <button class="stat" type="button" data-f="registered"><span class="n" id="n-registered">–</span><span class="l">Registered, ready to accept</span></button>
+      <button class="stat" type="button" data-f="accepted"><span class="n" id="n-accepted">–</span><span class="l">Accepted</span></button>
+    </div>
+    <div>
+      <p class="label">Groups · tap to filter</p>
+      <div class="cards" id="gcards"></div>
+    </div>
+    <div>
+      <p class="label">Still to call, by preferred time · tap to filter</p>
+      <div class="wcards">
+        <button class="wcard" type="button" data-w="Morning"><span><span class="gn">Morning</span><br><span class="gm">9 am – 12 pm</span></span><span class="n" id="wn-Morning">–</span></button>
+        <button class="wcard" type="button" data-w="Afternoon"><span><span class="gn">Afternoon</span><br><span class="gm">12 pm – 5 pm</span></span><span class="n" id="wn-Afternoon">–</span></button>
+        <button class="wcard" type="button" data-w="Evening"><span><span class="gn">Evening</span><br><span class="gm">5 pm – 9 pm</span></span><span class="n" id="wn-Evening">–</span></button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Show">
+        <button type="button" data-f="tocall" aria-pressed="true">To call</button>
+        <button type="button" data-f="toregister" aria-pressed="false">Waiting to register</button>
+        <button type="button" data-f="registered" aria-pressed="false">Registered</button>
+        <button type="button" data-f="accepted" aria-pressed="false">Accepted</button>
+        <button type="button" data-f="closed" aria-pressed="false">Referred &amp; closed</button>
+        <button type="button" data-f="all" aria-pressed="false">All</button>
+      </div>
+      <label class="search" for="q"><input id="q" type="search" placeholder="Search name, phone, email or reference" autocomplete="off" aria-label="Search people"></label>
+    </div>
+    <div class="list" id="list"><div class="empty">Loading…</div></div>
+  </section>
+
+  <!-- Groups -->
+  <section id="v-groups" class="col" hidden>
+    <div class="toolbar"><p class="msg" style="margin:0">People choose from the open groups on the interest form. Changes here go straight to the Groups tab of the Sheet.</p><button class="btn primary" type="button" id="g-add">Add a group</button></div>
+    <div id="g-editor"></div>
+    <div class="col" id="g-list"></div>
+  </section>
+
+  <!-- Posters -->
+  <section id="v-posters" class="col" hidden>
+    <p class="msg" style="margin:0">The main poster shows at the top of the interest form; group posters show inside each group's option. JPG, PNG or WebP; large images are resized before uploading.</p>
+    <div class="col" id="p-list"><div class="empty">Loading posters…</div></div>
+  </section>
 </div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="panel-head">
+    <div><h2 id="d-title">Client</h2><p id="d-sub"></p></div>
+    <button class="close" id="d-close" type="button" aria-label="Close details">×</button>
+  </div>
+  <div class="panel-body" id="d-body"></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
 
 <script>
 (() => {
-  const STORE = "gc-admin-key";
+  const KEY = "<?= adminKey ?>";
   const $ = id => document.getElementById(id);
-  const get = () => { try { return localStorage.getItem(STORE) || ""; } catch (e) { return ""; } };
-  const put = k => { try { localStorage.setItem(STORE, k); } catch (e) {} };
-  const forget = () => { try { localStorage.removeItem(STORE); } catch (e) {} };
-  const say = m => { $("err").textContent = m; $("err").hidden = !m; };
+  const run = (fn, ...a) => new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](KEY, ...a));
+  const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
+  const pill = (t, c) => el("span", "pill " + (c || ""), t);
+  let toastT;
+  const toast = m => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); };
 
-  // Opens the console as its own page (more reliable than showing it inside this site).
-  const go = key => { location.href = WEB_APP_URL + "?admin=" + encodeURIComponent(key); };
+  const BUCKET = { "": "tocall", "New": "tocall", "No answer yet": "tocall", "Pre-screen done": "toregister", "Registration sent": "toregister", "Registered": "registered", "Accepted": "accepted", "Referred elsewhere": "closed", "Not proceeding": "closed" };
+  const PILL = { "New": "solid", "No answer yet": "", "Pre-screen done": "soft", "Registration sent": "soft", "Registered": "solid", "Accepted": "solid", "Referred elsewhere": "quiet", "Not proceeding": "quiet" };
+  const S = { people: [], groups: [], prescreen: [], drafts: {}, registerBase: "", filter: "tocall", win: null, grp: null, q: "", open: null, tab: "regs", posters: null, gEdit: null };
 
-  $("form").addEventListener("submit", e => {
-    e.preventDefault();
-    let k = $("key").value.trim();
-    const m = /[?&]admin=([^&#\s]+)/.exec(k); if (m) k = decodeURIComponent(m[1]);
-    k = k.replace(/[^A-Za-z0-9]/g, "");
-    if (k.length < 20) { say("That doesn't look like an admin key. Copy it again from getAdminLink."); return; }
-    if ($("remember").checked) put(k); else forget();
-    go(k);
-  });
-  $("forget").onclick = () => { forget(); $("forget").hidden = true; $("key").value = ""; say("Saved key removed from this device."); };
-
-  if (!/^https:\/\/script\.google\.com\/macros\/s\/AKfy[\w-]+\/exec$/.test(WEB_APP_URL)) {
-    say("This page isn't set up yet: the web app link in admin/index.html is missing or wrong.");
-    return;
+  const bucket = p => BUCKET[p["Status"] || ""] || "tocall";
+  const split = s => String(s || "").split(/\s*,\s*/).filter(Boolean);
+  const wins = p => split(p["Call times"]);
+  const groupsOf = p => split(p["Groups"]);
+  const nameOf = p => p["Name"] || (p._reg && p._reg["Full name"]) || "Unnamed";
+  const R = p => p._reg || {};
+  function flags(p){
+    const f = [], r = R(p);
+    if (p["Joined a PT Foundation group before"] === "Yes") f.push("Has joined a PT Foundation support group or workshop before");
+    const pre = p._pre || {};
+    if (pre["Thoughts of self-harm or suicide"] === "In the past few weeks") f.push("Recent thoughts of self-harm or suicide reported at pre-screening. Check the safety plan and that your supervisor knows.");
+    if (["Discuss with supervisor", "Not suitable now: refer"].includes(pre["Assessment"])) f.push("Pre-screening assessment: " + pre["Assessment"] + (pre["Assessment (details)"] ? " (" + pre["Assessment (details)"] + ")" : ""));
+    const con = r["Knows the counselors / someone close involved"]; if (con && con !== "No") f.push("Knows the counselors or supervisors, or someone close is involved: " + con + (r["Connection details"] ? " (" + r["Connection details"] + ")" : ""));
+    return f;
   }
-  const saved = get();
-  if (saved) {
-    $("forget").hidden = false;
-    $("key").value = saved;
-    say("");
+  const inFilter = (p, f) => f === "all" ? true : bucket(p) === f;
+  const waUser = n => { const v = String(n || "").trim(); return v.replace(/\D/g, "").length < 9 && /[A-Za-z]/.test(v); };
+  const waNumber = n => { let d = String(n || "").replace(/\D/g, ""); if (d.startsWith("0")) d = "6" + d; return d; };
+  const regLink = p => S.registerBase + encodeURIComponent(p["Reference"]);
+  const regMessage = p => "Hi " + nameOf(p) + ", thank you for chatting with us about " + groupsOf(p).join(" and ") + "! Here's your registration and consent form (about 2 minutes): " + regLink(p) + "\n\nBrendon & Benjamin";
+
+  /* ---------- load ---------- */
+  async function load(quiet){
+    if (!(window.google && google.script && google.script.run)){
+      $("err").textContent = "This console only works when opened from your Apps Script link (…/exec?admin=…) or from groupcounseling.brendonban.me/admin.";
+      $("err").hidden = false; $("list").textContent = ""; $("updated").textContent = ""; return;
+    }
+    try {
+      const d = await run("adminGetData");
+      S.people = d.people; S.groups = d.groups; S.registerBase = d.registerBase; S.prescreen = d.prescreen || [];
+      $("updated").textContent = "Updated " + d.loadedAt; $("sheet-link").href = d.sheetUrl; S.folderUrl = d.folderUrl;
+      $("err").hidden = true;
+      render(); if (S.open) renderPanel();
+      if (S.tab === "groups" && !S.gEdit) renderGroups();
+    } catch (e){
+      $("err").textContent = "Couldn't load: " + (e.message || e) + ". If this keeps happening, run setup() in Apps Script.";
+      $("err").hidden = false;
+      if (!quiet) $("list").textContent = "";
+    }
   }
-  $("key").focus();
+  $("refresh").onclick = () => { $("updated").textContent = "Refreshing…"; load(); };
+  setInterval(() => { if (!document.hidden && !S.open && !S.gEdit) load(true); }, 90000);
+
+  /* ---------- tabs ---------- */
+  function showTab(t){
+    S.tab = t;
+    [["regs","t-regs","v-regs"],["groups","t-groups","v-groups"],["posters","t-posters","v-posters"]].forEach(([k, tb, v]) => { $(tb).setAttribute("aria-selected", String(k === t)); $(v).hidden = k !== t; });
+    if (t === "groups") renderGroups();
+    if (t === "posters") loadPosters();
+  }
+  $("t-regs").onclick = () => showTab("regs");
+  $("t-groups").onclick = () => showTab("groups");
+  $("t-posters").onclick = () => showTab("posters");
+
+  /* ---------- people ---------- */
+  function render(){
+    const P = S.people, count = f => P.filter(p => inFilter(p, f)).length;
+    ["tocall","toregister","registered","accepted"].forEach(f => $("n-" + f).textContent = count(f));
+    const tc = count("tocall"); $("tocall-badge").textContent = tc; $("tocall-badge").hidden = !tc;
+    const toCall = P.filter(p => bucket(p) === "tocall");
+    ["Morning","Afternoon","Evening"].forEach(w => $("wn-" + w).textContent = toCall.filter(p => wins(p).includes(w)).length);
+    document.querySelectorAll(".stat, .filters button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === S.filter)));
+    document.querySelectorAll(".wcard").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.w === S.win)));
+    renderGroupCards();
+
+    const q = S.q.toLowerCase();
+    let rows = P.filter(p => inFilter(p, S.filter))
+      .filter(p => !S.win || wins(p).includes(S.win))
+      .filter(p => !S.grp || groupsOf(p).includes(S.grp))
+      .filter(p => !q || [nameOf(p), R(p)["Full name"], p["WhatsApp"], p["Email"], p["Reference"]].join(" ").toLowerCase().includes(q));
+    const oldest = S.filter === "tocall" || S.filter === "toregister" || S.filter === "registered";
+    rows.sort((a, b) => oldest ? a._row - b._row : b._row - a._row);
+
+    const list = $("list"); list.textContent = "";
+    if (!P.length){ list.appendChild(el("div", "empty", "No one yet. When people send the interest form at groupcounseling.brendonban.me, they appear here.")); return; }
+    if (!rows.length){ list.appendChild(el("div", "empty", "Nothing matches this view.")); return; }
+    rows.forEach(p => {
+      const b = el("button", "item b-" + bucket(p)); b.type = "button"; b.id = "row-" + p["Reference"];
+      const who = el("div"); who.style.minWidth = "0";
+      who.appendChild(el("div", "nm", nameOf(p) + (R(p)["Age"] ? ", " + R(p)["Age"] : "")));
+      who.appendChild(el("div", "ct", [p["WhatsApp"], "interest " + p["Submitted"], p["Handled by"] ? "with " + p["Handled by"] : ""].filter(Boolean).join(" · ")));
+      const mid = el("div", "pills"); groupsOf(p).forEach(g => mid.appendChild(pill(g, "soft"))); if (bucket(p) === "tocall") wins(p).forEach(w => mid.appendChild(pill(w)));
+      const st = el("div", "pills"); st.appendChild(pill(p["Status"] || "New", PILL[p["Status"]] || "solid"));
+      if (flags(p).length && bucket(p) !== "closed") st.appendChild(pill("Check", ""));
+      b.append(who, mid, st); b.onclick = () => openPanel(p["Reference"]);
+      list.appendChild(b);
+    });
+  }
+  function renderGroupCards(){
+    const box = $("gcards"); box.textContent = "";
+    const names = S.groups.map(g => g.name);
+    const extra = [...new Set(S.people.flatMap(groupsOf).filter(n => !names.includes(n)))];
+    const all = S.groups.concat(extra.map(n => ({ name: n, open: null, places: 0, schedule: "", venue: "" })));
+    if (!all.length){ box.appendChild(el("div", "empty", "No groups yet. Add them in the Groups tab.")); return; }
+    all.forEach(g => {
+      const mine = S.people.filter(p => groupsOf(p).includes(g.name));
+      const acc = mine.filter(p => bucket(p) === "accepted").length, wait = mine.filter(p => ["tocall","toregister","registered"].includes(bucket(p))).length;
+      const c = el("button", "gcard"); c.type = "button"; c.setAttribute("aria-pressed", String(S.grp === g.name));
+      const t = el("div", "gtop"); t.appendChild(el("span", "gn", g.name)); if (g.open !== null) t.appendChild(pill(g.open ? "Open" : "Closed", g.open ? "solid" : "quiet")); c.appendChild(t);
+      const meta = [g.schedule, g.venue].filter(Boolean).join(" · "); if (meta) c.appendChild(el("span", "gm", meta));
+      const n = el("div", "gnums"); n.appendChild(el("span", null, g.places ? acc + " of " + g.places + " places filled" : acc + " accepted")); n.appendChild(el("span", null, wait + " in progress")); c.appendChild(n);
+      if (g.places){ const m = el("div", "meter"), s = el("span"); s.style.width = Math.min(100, Math.round(acc / g.places * 100)) + "%"; m.appendChild(s); c.appendChild(m); }
+      c.onclick = () => { S.grp = S.grp === g.name ? null : g.name; render(); };
+      box.appendChild(c);
+    });
+  }
+  document.querySelectorAll(".stat, .filters button").forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
+  document.querySelectorAll(".wcard").forEach(b => b.onclick = () => { S.win = S.win === b.dataset.w ? null : b.dataset.w; if (!["tocall","all"].includes(S.filter)) S.filter = "tocall"; render(); });
+  $("q").addEventListener("input", e => { S.q = e.target.value.trim(); render(); });
+
+  /* ---------- person panel ---------- */
+  const find = ref => S.people.find(p => p["Reference"] === ref);
+  function openPanel(ref){ S.open = ref; $("scrim").hidden = false; $("panel").hidden = false; renderPanel(); $("d-close").focus(); }
+  function closePanel(){ const ref = S.open; S.open = null; $("scrim").hidden = true; $("panel").hidden = true; const r = ref && $("row-" + ref); if (r) r.focus(); }
+  $("d-close").onclick = closePanel; $("scrim").onclick = closePanel;
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) closePanel(); });
+
+  async function save(ref, patch, msg){
+    const p = find(ref); if (!p) return;
+    const before = Object.assign({}, p);
+    Object.assign(p, patch); render(); renderPanel();
+    try {
+      const res = await run("adminUpdatePerson", ref, patch);
+      if (!res.ok){ Object.assign(p, before); render(); renderPanel(); toast(res.message); return; }
+      if (msg) toast(msg);
+    } catch (e){ Object.assign(p, before); render(); renderPanel(); toast("That didn't save. Please try again."); }
+  }
+  const stamp = () => new Date().toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  const kv = (dl, k, v) => { if (!v) return; dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); };
+  const sec = t => { const s = el("section", "sec"); s.appendChild(el("h3", null, t)); return s; };
+  const markSent = p => { if (["tocall","toregister"].includes(bucket(p)) && p["Status"] !== "Registration sent") save(p["Reference"], { "Status": "Registration sent" }, "Marked registration sent"); };
+
+  /* ---------- pre-screening questions ---------- */
+  function preAnswers(p){
+    const pre = p._pre || {}, a = { callBy: pre["Call by"] || p["Handled by"] || "" };
+    S.prescreen.forEach(q => {
+      const v = pre[q.col] || "";
+      a[q.id] = q.type === "checks" ? v.split(/\s*,\s*/).filter(x => q.options.includes(x)) : v;
+      if (q.details) a[q.id + "_details"] = pre[q.col + " (details)"] || "";
+    });
+    return a;
+  }
+  function prescreenForm(p){
+    const ref = p["Reference"], pre = p._pre;
+    const a = S.drafts[ref] || preAnswers(p);
+    const draft = () => { S.drafts[ref] = a; dirty.hidden = false; };
+    const box = el("details", "sec prebox"); box.open = !!S.drafts[ref] || (!pre && bucket(p) === "tocall");
+    const sum = el("summary"); sum.appendChild(el("span", "h", "Pre-screening questions"));
+    sum.appendChild(el("span", "msg", pre ? "Saved " + pre["Updated"] + (pre["Call by"] ? " by " + pre["Call by"] : "") : "Not filled in yet"));
+    const dirty = el("span", "pill", "Unsaved"); dirty.hidden = !S.drafts[ref]; sum.appendChild(dirty);
+    box.appendChild(sum);
+    box.appendChild(el("p", "msg", "Guiding questions for the call. Ask them in your own words, and only what feels right. Saved to the Pre-screening tab."));
+
+    const cb = el("label", "field", "Call by"); cb.htmlFor = "pq-callby"; cb.style.maxWidth = "220px";
+    const cs = el("select"); cs.id = "pq-callby"; ["", "Brendon", "Benjamin"].forEach(n => { const o = el("option", null, n || "Choose…"); o.value = n; cs.appendChild(o); });
+    cs.value = a.callBy; cs.onchange = () => { a.callBy = cs.value; draft(); }; cb.appendChild(cs); box.appendChild(cb);
+
+    S.prescreen.forEach((q, n) => {
+      const w = el(q.type === "text" ? "label" : "fieldset", "pq"); const id = "pq-" + q.id;
+      const qt = el(q.type === "text" ? "span" : "legend", "q", (n + 1) + ". " + q.q); w.appendChild(qt);
+      if (q.hint) w.appendChild(el("span", "hint", q.hint));
+      if (q.type === "text"){
+        w.htmlFor = id; const t = el("textarea"); t.id = id; t.rows = 2; t.value = a[q.id] || "";
+        t.oninput = () => { a[q.id] = t.value; draft(); }; w.appendChild(t);
+      } else {
+        const opts = el("div", q.type === "checks" ? "opts col" : "opts");
+        q.options.forEach((o, i) => {
+          const l = el("label", "check"); const inp = el("input"); inp.id = id + "-" + i; l.htmlFor = inp.id;
+          if (q.type === "choice"){ inp.type = "radio"; inp.name = id; inp.checked = a[q.id] === o; inp.onchange = () => { a[q.id] = o; draft(); }; }
+          else { inp.type = "checkbox"; inp.checked = (a[q.id] || []).includes(o); inp.onchange = () => { a[q.id] = q.options.filter((x, j) => j === i ? inp.checked : (a[q.id] || []).includes(x)); draft(); }; }
+          l.append(inp, document.createTextNode(o)); opts.appendChild(l);
+        });
+        w.appendChild(opts);
+        if (q.details){
+          const d = el("input"); d.placeholder = "Details"; d.setAttribute("aria-label", q.q + " Details"); d.value = a[q.id + "_details"] || "";
+          d.oninput = () => { a[q.id + "_details"] = d.value; draft(); }; w.appendChild(d);
+        }
+      }
+      box.appendChild(w);
+    });
+
+    const acts = el("div", "acts"); acts.style.marginTop = "12px";
+    const sv = el("button", "btn small primary", "Save answers"); sv.type = "button";
+    sv.onclick = async () => {
+      sv.disabled = true; sv.textContent = "Saving…";
+      try {
+        const res = await run("adminSavePrescreen", ref, a);
+        if (!res || !res.ok){ toast((res && res.message) || "That didn't save."); return; }
+        p._pre = res.pre; Object.assign(p, res.patch || {}); delete S.drafts[ref];
+        render(); renderPanel();
+        toast(a.risk === "In the past few weeks" ? "Saved. Recent risk noted: tell your supervisor today." : "Pre-screening saved" + (res.patch && res.patch.Status ? " · marked pre-screen done" : ""));
+      } catch (e){ toast("That didn't save. Your answers are still here; please try again."); }
+      finally { sv.disabled = false; sv.textContent = "Save answers"; }
+    };
+    acts.appendChild(sv);
+    if (S.drafts[ref]){ const dc = el("button", "btn small", "Discard changes"); dc.type = "button"; dc.onclick = () => { delete S.drafts[ref]; renderPanel(); }; acts.appendChild(dc); }
+    box.appendChild(acts);
+    return box;
+  }
+
+  function renderPanel(){
+    const p = find(S.open); if (!p){ closePanel(); return; }
+    const ref = p["Reference"], b = bucket(p), r = p._reg, body = $("d-body");
+    $("d-title").textContent = nameOf(p);
+    $("d-sub").textContent = ref + " · interest " + p["Submitted"] + (r ? " · registered " + r["Submitted"] : "");
+    body.textContent = "";
+
+    // Pre-screening call
+    const call = sec("Pre-screening call");
+    const ph = el("div", "phone"); ph.appendChild(el("strong", null, p["WhatsApp"]));
+    const isUser = waUser(p["WhatsApp"]);
+    const cp = el("button", "btn small", isUser ? "Copy username" : "Copy number"); cp.type = "button";
+    cp.onclick = () => navigator.clipboard.writeText(p["WhatsApp"]).then(() => toast(isUser ? "Username copied" : "Number copied"), () => toast("Couldn't copy. Select it instead."));
+    ph.appendChild(cp);
+    if (!isUser){ const wa = el("a", "btn small", "Open in WhatsApp"); wa.href = "https://wa.me/" + waNumber(p["WhatsApp"]); wa.target = "_blank"; wa.rel = "noopener"; ph.appendChild(wa); }
+    call.appendChild(ph);
+    if (isUser) call.appendChild(el("p", "msg", "This is a WhatsApp username. In WhatsApp, tap New chat and search for it."));
+    const wp = el("div", "pills"); wp.style.marginTop = "8px"; wins(p).forEach(w => wp.appendChild(pill(w))); call.appendChild(wp);
+    const cdl = el("dl", "kv"); cdl.style.marginTop = "10px";
+    kv(cdl, "Timing note", p["Timing note"]); kv(cdl, "Email", p["Email"]); kv(cdl, "Joined a PT Foundation group before", p["Joined a PT Foundation group before"]); kv(cdl, "How they heard", p["How they heard"]);
+    call.appendChild(cdl); body.appendChild(call);
+    body.appendChild(prescreenForm(p));
+
+    const fl = flags(p);
+    if (fl.length){ const f = el("div", "flagbox"); f.appendChild(el("strong", null, "Check")); const ul = el("ul"); fl.forEach(x => ul.appendChild(el("li", null, x))); f.appendChild(ul); body.appendChild(f); }
+
+    // Status
+    const st = sec("Status");
+    st.appendChild(el("div", "pills")).appendChild(pill(p["Status"] || "New", PILL[p["Status"]] || "solid"));
+    const acts = el("div", "acts"); acts.style.marginTop = "10px";
+    const act = (label, primary, fn) => { const x = el("button", "btn small" + (primary ? " primary" : ""), label); x.type = "button"; x.onclick = fn; acts.appendChild(x); };
+    if (b === "tocall"){
+      act("Called, no answer", false, () => save(ref, { "Status": "No answer yet", "Counselor notes": ("[" + stamp() + "] Called, no answer.\n" + (p["Counselor notes"] || "")).trim() }, "Call attempt logged"));
+      act("Pre-screen done", true, () => save(ref, { "Status": "Pre-screen done" }, "Marked pre-screen done"));
+    }
+    if (b === "registered") act("Accept into group", true, () => {
+      const gs = groupsOf(p);
+      if (!gs.length){ toast("Choose a group for this person first."); return; }
+      const full = gs.map(g => { const grp = S.groups.find(x => x.name === g); const n = S.people.filter(x => groupsOf(x).includes(g) && bucket(x) === "accepted").length + 1; return grp && grp.places && n > grp.places ? g + " (" + n + " of " + grp.places + ")" : ""; }).filter(Boolean);
+      save(ref, { "Status": "Accepted" }, full.length ? "Accepted. Over capacity: " + full.join(", ") : "Accepted into " + gs.join(" and "));
+    });
+    if (p["Status"] !== "Referred elsewhere") act("Referred elsewhere", false, () => save(ref, { "Status": "Referred elsewhere" }, "Marked referred"));
+    if (p["Status"] !== "Not proceeding") act("Not proceeding", false, () => save(ref, { "Status": "Not proceeding" }, "Marked not proceeding"));
+    if (b !== "tocall") act("Move back to New", false, () => save(ref, { "Status": "New" }, "Moved back to New"));
+    st.appendChild(acts);
+
+    // Registration link
+    if (!r && ["tocall","toregister"].includes(b)){
+      const box = el("div", "flagbox"); box.style.marginTop = "14px";
+      box.appendChild(el("strong", null, "Registration link"));
+      box.appendChild(el("p", "msg", "After the pre-screening call, send this to " + nameOf(p) + ". It opens their own registration and consent form."));
+      const link = el("input"); link.readOnly = true; link.value = regLink(p); link.style.cssText = "width:100%;margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:.85rem"; link.onclick = () => link.select();
+      box.appendChild(link);
+      const la = el("div", "acts");
+      const c1 = el("button", "btn small", "Copy link"); c1.type = "button";
+      c1.onclick = () => navigator.clipboard.writeText(regLink(p)).then(() => { toast("Link copied"); markSent(p); }, () => { link.select(); toast("Select the link and copy it."); });
+      const c2 = el("button", "btn small", "Copy WhatsApp message"); c2.type = "button";
+      c2.onclick = () => navigator.clipboard.writeText(regMessage(p)).then(() => { toast("Message copied"); markSent(p); }, () => toast("Couldn't copy."));
+      if (waUser(p["WhatsApp"])){ c2.className = "btn small primary"; la.append(c2, c1); }
+      else {
+        const w2 = el("a", "btn small primary", "Send on WhatsApp"); w2.href = "https://wa.me/" + waNumber(p["WhatsApp"]) + "?text=" + encodeURIComponent(regMessage(p)); w2.target = "_blank"; w2.rel = "noopener";
+        w2.onclick = () => markSent(p);
+        la.append(w2, c2, c1);
+      } box.appendChild(la); st.appendChild(box);
+    }
+
+    const fr = el("div", "frow"); fr.style.marginTop = "14px";
+    const hl = el("label", "field", "Handled by"); hl.htmlFor = "d-assign";
+    const hs = el("select"); hs.id = "d-assign"; ["", "Brendon", "Benjamin"].forEach(n => { const o = el("option", null, n || "Not assigned"); o.value = n; hs.appendChild(o); });
+    hs.value = p["Handled by"] || ""; hs.onchange = () => save(ref, { "Handled by": hs.value }, hs.value ? "Assigned to " + hs.value : "Unassigned");
+    hl.appendChild(hs); fr.appendChild(hl);
+    const gf = el("div", "field"); gf.appendChild(document.createTextNode("Groups"));
+    const mine = groupsOf(p), names = S.groups.map(g => g.name).concat(mine.filter(n => !S.groups.some(g => g.name === n)));
+    names.forEach((n, i) => {
+      const lab = el("label", "check"); lab.style.fontWeight = "400"; lab.htmlFor = "d-g-" + i;
+      const cb = el("input"); cb.type = "checkbox"; cb.id = "d-g-" + i; cb.checked = mine.includes(n);
+      cb.onchange = () => { const next = names.filter((m, j) => (j === i ? cb.checked : mine.includes(m))); if (!next.length){ cb.checked = true; toast("Keep at least one group."); return; } save(ref, { "Groups": next.join(", ") }, "Groups updated"); };
+      lab.append(cb, document.createTextNode(n)); gf.appendChild(lab);
+    });
+    fr.appendChild(gf); st.appendChild(fr);
+
+    const nl = el("label", "field", "Counselor notes"); nl.htmlFor = "d-notes"; nl.style.marginTop = "12px";
+    nl.appendChild(el("span", "hint", "Brief notes only; clinical detail belongs in your case notes. Saved to the Sheet."));
+    const ta = el("textarea"); ta.id = "d-notes"; ta.value = p["Counselor notes"] || ""; nl.appendChild(ta); st.appendChild(nl);
+    const sv = el("button", "btn small", "Save notes"); sv.type = "button"; sv.style.marginTop = "8px";
+    sv.onclick = () => { if (ta.value !== (p["Counselor notes"] || "")) save(ref, { "Counselor notes": ta.value }, "Notes saved"); else toast("No changes to save"); };
+    st.appendChild(sv); body.appendChild(st);
+
+    // Registration
+    const rs = sec("Registration form");
+    if (!r){ rs.appendChild(el("p", "msg", "Not registered yet.")); body.appendChild(rs); return; }
+    const blocks = [
+      ["Details", [["Full name", "Full name"], ["Preferred name", "Preferred name"], ["NRIC / Passport (last 4)", "NRIC / Passport (last 4)"], ["Pronouns", "Pronouns"], ["Email", "Email"], ["WhatsApp", "WhatsApp (number or username)"], ["Knows counselors / someone close involved", "Knows the counselors / someone close involved"], ["Who", "Connection details"]]],
+      ["Emergency contact", [["Name", "Emergency contact"], ["Relationship", "EC relationship"], ["Phone", "EC phone"], ["Agreed to share", "Emergency contact agreed"]]],
+      ["Consent and signature", [["Recording", "Recording consent"], ["Agreement", "Agreement"], ["PDPA consent", "PDPA explicit consent"], ["Signed by", "Signed by"], ["Signed date", "Signed date"], ["Confirmation email", "Confirmation email"]]],
+    ];
+    blocks.forEach(([t, rows]) => { const s = el("div"); s.style.marginTop = "10px"; s.appendChild(el("p", "label", t)); const dl = el("dl", "kv"); rows.forEach(([k, f]) => kv(dl, k, r[f])); s.appendChild(dl); rs.appendChild(s); });
+    if (/^https:\/\//.test(r["Signed PDF"] || "")){ const a = el("a", "btn small", "Open signed PDF"); a.href = r["Signed PDF"]; a.target = "_blank"; a.rel = "noopener"; a.style.marginTop = "12px"; a.style.display = "inline-flex"; rs.appendChild(a); }
+    body.appendChild(rs);
+  }
+
+  /* ---------- groups ---------- */
+  function renderGroups(){
+    const ed = $("g-editor"); ed.textContent = "";
+    if (S.gEdit) ed.appendChild(groupForm(S.gEdit));
+    const list = $("g-list"); list.textContent = "";
+    if (!S.groups.length){ list.appendChild(el("div", "empty", "No groups yet. Add one so clients can choose it on the form.")); return; }
+    S.groups.forEach(g => {
+      const acc = S.people.filter(p => groupsOf(p).includes(g.name) && bucket(p) === "accepted").length;
+      const row = el("div", "grow"), l = el("div"); l.style.minWidth = "0";
+      const t = el("div", "gtop"); t.style.justifyContent = "flex-start"; t.appendChild(el("span", "gn", g.name)); t.appendChild(pill(g.open ? "Open" : "Closed", g.open ? "solid" : "quiet")); l.appendChild(t);
+      l.appendChild(el("div", "gm", [g.schedule, g.venue, g.places ? acc + " of " + g.places + " places filled" : acc + " accepted"].filter(Boolean).join(" · ")));
+      if (g.description) l.appendChild(el("div", "gm", g.description));
+      const a = el("div", "acts");
+      const e = el("button", "btn small", "Edit"); e.type = "button"; e.onclick = () => { S.gEdit = g.name; renderGroups(); window.scrollTo({ top: 0 }); };
+      const o = el("button", "btn small", g.open ? "Close registration" : "Reopen"); o.type = "button";
+      o.onclick = async () => { o.disabled = true; const res = await run("adminSaveGroup", g.name, Object.assign({}, g, { open: !g.open })).catch(() => ({ ok: false, message: "That didn't save." })); if (!res.ok){ toast(res.message); o.disabled = false; return; } toast(g.open ? g.name + " closed to new registrations" : g.name + " reopened"); await load(true); renderGroups(); };
+      a.append(e, o); row.append(l, a); list.appendChild(row);
+    });
+  }
+  $("g-add").onclick = () => { S.gEdit = "__new"; renderGroups(); const n = $("ge-name"); if (n) n.focus(); };
+  function field(id, label, value, ph, area){
+    const l = el("label", "field", label); l.htmlFor = id;
+    const i = el(area ? "textarea" : "input"); i.id = id; i.value = value || ""; if (ph) i.placeholder = ph; l.appendChild(i); return l;
+  }
+  function groupForm(name){
+    const g = name === "__new" ? { open: true } : (S.groups.find(x => x.name === name) || { open: true });
+    const f = el("form", "gedit"); f.noValidate = true;
+    f.appendChild(el("strong", null, name === "__new" ? "New group" : "Edit " + g.name));
+    f.appendChild(field("ge-name", "Group name *", g.name, "e.g. Managing stress together"));
+    f.appendChild(field("ge-desc", "What it's about (clients see this)", g.description, "Two or three sentences", true));
+    const r = el("div", "frow"); r.appendChild(field("ge-when", "When", g.schedule, "e.g. Thursdays 7–9 pm, 6 weeks from 5 Nov")); r.appendChild(field("ge-where", "Where", g.venue, "e.g. PT Foundation, Kuala Lumpur")); f.appendChild(r);
+    const pl = field("ge-places", "Places (blank for no limit)", g.places || "", "e.g. 8"); pl.querySelector("input").inputMode = "numeric"; f.appendChild(pl);
+    const ck = el("label", "check"); const cb = el("input"); cb.type = "checkbox"; cb.id = "ge-open"; cb.checked = g.open !== false; ck.append(cb, document.createTextNode("Open for registration")); f.appendChild(ck);
+    if (name !== "__new") f.appendChild(el("p", "msg", "Renaming a group doesn't change the group name on registrations already made."));
+    const m = el("p", "msg"); m.hidden = true; f.appendChild(m);
+    const a = el("div", "acts");
+    const sv = el("button", "btn primary small", name === "__new" ? "Add group" : "Save changes"); sv.type = "submit";
+    const cn = el("button", "btn small", "Cancel"); cn.type = "button"; cn.onclick = () => { S.gEdit = null; renderGroups(); };
+    a.append(sv, cn); f.appendChild(a);
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const places = $("ge-places").value.trim();
+      if (places && !/^\d+$/.test(places)){ m.textContent = "Places should be a whole number, or blank."; m.hidden = false; return; }
+      sv.disabled = true;
+      const data = { name: $("ge-name").value.trim(), description: $("ge-desc").value.trim(), schedule: $("ge-when").value.trim(), venue: $("ge-where").value.trim(), places: places ? Number(places) : 0, open: $("ge-open").checked };
+      const res = await run("adminSaveGroup", name === "__new" ? "" : name, data).catch(() => ({ ok: false, message: "That didn't save. Please try again." }));
+      if (!res.ok){ m.textContent = res.message; m.hidden = false; sv.disabled = false; return; }
+      S.gEdit = null; toast(data.name + (name === "__new" ? " added" : " saved")); await load(true); renderGroups();
+    };
+    return f;
+  }
+
+  /* ---------- posters ---------- */
+  async function loadPosters(){
+    try { S.posters = await run("adminGetState"); renderPosters(); }
+    catch (e){ $("p-list").textContent = "Couldn't load posters: " + (e.message || e); }
+  }
+  function renderPosters(){
+    const box = $("p-list"); box.textContent = "";
+    box.appendChild(posterCard("", "Main poster", "Shown at the top of the interest form.", S.posters.main));
+    box.appendChild(el("p", "label", "Group posters"));
+    if (!S.posters.groups.length){ box.appendChild(el("div", "empty", "No groups yet. Add them in the Groups tab.")); return; }
+    S.posters.groups.forEach(g => box.appendChild(posterCard(g.name, g.name, "Shown inside this group's option on the form" + (g.open ? "." : " once the group is open."), g.poster)));
+  }
+  function posterCard(target, title, sub, poster){
+    const c = el("section", "pcard"), th = el("div", "thumb");
+    if (poster){ const i = el("img"); i.src = poster; i.alt = "Poster for " + title; th.appendChild(i); } else th.textContent = "No poster yet";
+    const info = el("div", "col"); info.style.gap = "8px"; info.style.minWidth = "0";
+    info.appendChild(el("strong", null, title)); info.appendChild(el("span", "gm", sub));
+    const a = el("div", "acts"), msg = el("div", "msg");
+    const file = el("input"); file.type = "file"; file.accept = "image/jpeg,image/png,image/webp";
+    const up = el("button", "btn small primary", poster ? "Replace poster" : "Upload poster"); up.type = "button"; up.onclick = () => file.click();
+    file.onchange = async () => {
+      const f = file.files[0]; if (!f) return; up.disabled = true; msg.textContent = "Uploading…";
+      try { const data = await shrink(f); const r = await run("adminSetPoster", target, data); if (!r.ok){ msg.textContent = r.message; up.disabled = false; return; } await loadPosters(); toast("Poster saved"); }
+      catch (e){ msg.textContent = "Upload didn't work: " + (e.message || e); up.disabled = false; }
+      file.value = "";
+    };
+    a.append(file, up);
+    if (poster){
+      const rm = el("button", "btn small", "Remove"); rm.type = "button";
+      rm.onclick = async () => {
+        if (!rm.classList.contains("armed")){ rm.classList.add("armed"); rm.textContent = "Tap again to remove"; setTimeout(() => { if (rm.isConnected){ rm.classList.remove("armed"); rm.textContent = "Remove"; } }, 4000); return; }
+        rm.disabled = true; try { await run("adminRemovePoster", target); await loadPosters(); toast("Poster removed"); } catch (e){ msg.textContent = "Couldn't remove it."; rm.disabled = false; }
+      };
+      a.appendChild(rm);
+    }
+    info.append(a, msg); c.append(th, info); return c;
+  }
+  function shrink(file){
+    return new Promise((res, rej) => {
+      const fr = new FileReader(); fr.onerror = () => rej(new Error("Couldn't read that file."));
+      fr.onload = () => { const img = new Image(); img.onerror = () => rej(new Error("That file isn't an image we can read."));
+        img.onload = () => { const max = 1600; if (img.width <= max && file.size < 1.5e6 && /image\/(jpeg|png|webp)/.test(file.type)) return res(fr.result);
+          const w = Math.min(max, img.width), h = Math.round(img.height * w / img.width), c = document.createElement("canvas"); c.width = w; c.height = h;
+          const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h); res(c.toDataURL("image/jpeg", 0.86)); };
+        img.src = fr.result; };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  load();
 })();
 </script>
 </body>
