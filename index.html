@@ -230,9 +230,9 @@ input[readonly]{color:var(--muted)}
           <span class="hint">A first name or nickname is fine.</span>
           <input id="f-name" name="name" autocomplete="nickname" maxlength="100" required></label>
         <div class="row">
-          <label for="f-wa">WhatsApp number&nbsp;<span class="req">*</span>
-            <input id="f-wa" name="whatsapp" type="tel" autocomplete="tel" inputmode="tel" required placeholder="e.g. 012-345 6789">
-            <span class="hint below">We'll call this number on WhatsApp.</span></label>
+          <label for="f-wa">WhatsApp number or username&nbsp;<span class="req">*</span>
+            <input id="f-wa" name="whatsapp" autocomplete="tel" required placeholder="e.g. 012-345 6789 or @yourname">
+            <span class="hint below">Whichever you prefer. We'll call you on WhatsApp.</span></label>
           <label for="f-email">Email <span class="opt">(optional)</span>
             <input id="f-email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
             <span class="hint below">Only to send you a confirmation. Leave blank if you prefer.</span></label>
@@ -291,6 +291,7 @@ input[readonly]{color:var(--muted)}
   const POSTERS = {}; let GROUPS = [], loaded = false;
 
   function flash(m){ const e = $("msg"); e.textContent = m; e.hidden = !m; if (m) e.scrollIntoView({block: "nearest"}); }
+const waOk = v => v.replace(/\D/g, "").length >= 9 || /^@?(?=[A-Za-z0-9._]*[A-Za-z])[A-Za-z0-9._]{3,35}$/.test(v);
   const checked = name => [...document.querySelectorAll('input[name="' + name + '"]:checked')].map(i => i.value);
 
   function renderGroups(){
@@ -330,7 +331,7 @@ input[readonly]{color:var(--muted)}
     const fail = (m, id) => { flash(m); if (id && $(id)) $(id).focus(); };
     if (!f.groups.length) return fail("Please choose at least one group.", "g-0");
     if (!f.name) return fail("Please tell us what to call you.", "f-name");
-    if (f.whatsapp.replace(/\D/g, "").length < 9) return fail("Please check your WhatsApp number.", "f-wa");
+    if (!waOk(f.whatsapp)) return fail("Please check your WhatsApp number or username.", "f-wa");
     if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return fail("Please check your email address, or leave it blank.", "f-email");
     if (!f.windows.length) return fail("Please choose when we can call you.", "w-morning");
     if (!f.agree) return fail("Please tick the box to confirm you're 18 or older and have read the commitments.", "f-agree");
