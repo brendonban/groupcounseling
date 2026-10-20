@@ -318,7 +318,7 @@ const waOk = v => v.replace(/\D/g, "").length >= 9 || /^@?(?=[A-Za-z0-9._]*[A-Za
     Object.assign(POSTERS, p.groups || {}); renderGroups();
   }).catch(() => {});
   run("getGroups").then(list => { GROUPS = list || []; loaded = true; renderGroups(); })
-    .catch(() => { loaded = true; GROUPS = []; renderGroups(); flash("We couldn't load the groups. Please reload the page."); });
+    .catch(err => { loaded = true; GROUPS = []; renderGroups(); flash("We couldn't load the groups. Please reload the page." + (err && err.message ? " (" + err.message + ")" : "")); });
 
   $("form").addEventListener("submit", async e => {
     e.preventDefault();
